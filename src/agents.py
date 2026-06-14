@@ -89,3 +89,30 @@ class AgenticWorkflowEngine:
             "total_tokens": response.usage.total_tokens
         }
         return response.choices[0].message.content.strip(), token_meta
+
+    @track_ml_metrics(node_name="Compliance_Verification_Node")
+    async def verify_financial_compliance(self, analysis_report: str, baseline_query: str):
+        """
+        Acts as the analytical feedback loop validating generated insights 
+        against baseline constraints ($50,000 threshold or margin metrics).
+        """
+        system_instructions = (
+            "You are a Compliance Auditor. Review the provided Business Analysis Report against the original User Query. "
+            "Verify if the report accurately flags whether the vendor met the $50,000 promotional minimum or profit margin requirements. "
+            "If corrections are needed, append an [AUDIT CORRECTION]; otherwise, append [AUDIT PASSED]."
+        )
+        response = await client.chat.completions.create(
+            model=ANALYTICS_MODEL,
+            messages=[
+                {"role": "system", "content": system_instructions},
+                {"role": "user", "content": f"Query: {baseline_query}\n\nReport: {analysis_report}"}
+            ],
+            temperature=0.0
+        )
+        token_meta = {
+            "model": response.model,
+            "prompt_tokens": response.usage.prompt_tokens,
+            "completion_tokens": response.usage.completion_tokens,
+            "total_tokens": response.usage.total_tokens
+        }
+        return response.choices[0].message.content.strip(), token_meta
